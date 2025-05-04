@@ -1,0 +1,62 @@
+version: '3'
+
+services:
+  # MongoDB database
+  mongodb:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    networks:
+      - app-network
+    restart: always
+
+  # Flask API
+  flask-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/app
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_DEBUG=True
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/
+      - JWT_SECRET_KEY=your_secure_jwt_key_here
+      - MODEL_DIR=/app/model
+    depends_on:
+      - mongodb
+    networks:
+      - app-network
+    restart: always
+
+  # Node.js frontend
+  nodejs-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - FLASK_API_URL=http://flask-api:5000
+    depends_on:
+      - flask-api
+    networks:
+      - app-network
+    restart: always
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
